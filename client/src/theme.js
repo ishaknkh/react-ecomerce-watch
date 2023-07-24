@@ -12,7 +12,6 @@ export const shades = {
     800: "#000000",
     900: "#000000",
   },
-
   secondary: {
     100: "#f7ccd2",
     200: "#ef99a4",
@@ -24,7 +23,6 @@ export const shades = {
     800: "#56000b",
     900: "#2b0006",
   },
-
   neutral: {
     100: "#f5f5f5",
     200: "#ecebeb",
@@ -52,7 +50,6 @@ export const theme = createTheme({
       light: shades.neutral[100],
     },
   },
-
   typography: {
     fontFamily: ["Fauna One", "sans-serif"].join(","),
     fontSize: 11,
