@@ -6,6 +6,11 @@ import * as yup from "yup";
 import { shades } from "../../theme";
 import Payment from "./Payment";
 import Shipping from "./Shipping";
+import { loadStripe } from "@stripe/stripe-js";
+
+const stripePromise = loadStripe(
+  "pk_test_51NcM8oKfvscbUjXdPB1qRP8UlEoeiPgu2fGHXcmcUSfWA3kWrGwwsBvPYGtxD1qGFfe4oYZyGLienOzzkq4KA4Yh00Tifnv9z5"
+);
 
 const Checkout = () => {
   const [activeStep, setActiveStep] = useState(0);
@@ -15,7 +20,43 @@ const Checkout = () => {
 
   const handleFormSubmit = async (values, actions) => {
     setActiveStep(activeStep + 1);
+
+    // copies the billing address on to shipping address
+    if (isFirstStep && values.shippingAddress.isSameAddress) {
+      actions.setFieldValue("shippingAddress", {
+        ...values.billingAddress,
+        isSameAddress: true,
+      });
+    }
+
+    if (isSecondStep) {
+      makePayment(values);
+    }
+
+    actions.setTouched({});
   };
+
+  async function makePayment(values) {
+    const stripe = await stripePromise;
+    const requestBody = {
+      userName: [values.firstName, values.lastName].join(" "),
+      email: values.email,
+      products: cart.map(({ id, count }) => ({
+        id,
+        count,
+      })),
+    };
+
+    const response = await fetch("http://localhost:1337/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+    const session = await response.json();
+    await stripe.redirectToCheckout({
+      sessionId: session.id,
+    });
+  }
 
   return (
     <Box width="80%" m="100px auto">
@@ -107,7 +148,7 @@ const Checkout = () => {
 
 const initialValues = {
   billingAddress: {
-    fistName: "",
+    firstName: "",
     lastName: "",
     country: "",
     street1: "",
@@ -118,7 +159,7 @@ const initialValues = {
   },
   shippingAddress: {
     isSameAddress: true,
-    fistName: "",
+    firstName: "",
     lastName: "",
     country: "",
     street1: "",
@@ -134,7 +175,7 @@ const initialValues = {
 const checkoutSchema = [
   yup.object().shape({
     billingAddress: yup.object().shape({
-      fistName: yup.string().required("required"),
+      firstName: yup.string().required("required"),
       lastName: yup.string().required("required"),
       country: yup.string().required("required"),
       street1: yup.string().required("required"),
@@ -143,9 +184,9 @@ const checkoutSchema = [
       state: yup.string().required("required"),
       zipCode: yup.string().required("required"),
     }),
-    shoppingAddress: yup.object().shape({
+    shippingAddress: yup.object().shape({
       isSameAddress: yup.boolean(),
-      fistName: yup.string().when("isSameAddress", {
+      firstName: yup.string().when("isSameAddress", {
         is: false,
         then: yup.string().required("required"),
       }),
